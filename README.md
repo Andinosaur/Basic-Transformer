@@ -1,4 +1,5 @@
 # Basic-Transformer
-This project is used to practice the basic function of the github.
+The main model in this project is learned from the annotated-transformer
+This project is just for self-learning
 
-In this project, you will see a model of basic Transformer
+https://nlp.seas.harvard.edu/annotated-transformer
