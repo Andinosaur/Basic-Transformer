@@ -60,21 +60,23 @@ class LayerNorm(nn.Module):
 
 
 class SublayerConnection(nn.Module):
-    def __init__(self, size):
+    def __init__(self, size, dropout):
         super(SublayerConnection, self).__init__()
         self.norm = LayerNorm(size)
-        
+        self.dropout = nn.Dropout(dropout)
+
     def forward(self, x, sublayer):
-        return x + sublayer(self.norm(x))
+        return x + self.dropout(sublayer(self.norm(x)))
     
 
 class EncoderLayer(nn.Module):
-    def __init__(self, atten_layer, feed_words, size):
-        super(EncoderLayer, self).__init__()
-        self.atten_layer = atten_layer
+    def __init__(self, size, self_atten, feed_words, dropout):
+        super(EncodeDecoder, self).__init__()
+        self.self_atten = self_atten
         self.feed_words = feed_words
-        self.norm = clone(SublayerConnection(size), 2)
+        self.sublayer = clone(SublayerConnection(size, dropout), 2)
+        self.size = size
 
-    def forward(self, x):
-        x = self.norm[0](self.atten_layer(x))
-        return self.norm[1](self.feed_words(x))
+    def forward(self, x, mask):
+        x = self.sublayer[0](x, lambda x: self.self_atten(x, x, x, mask))
+        return self.sublayer[1](x, self.feed_words)
