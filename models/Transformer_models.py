@@ -13,13 +13,13 @@ class EncodeDecoder(nn.Module):
         self.generator = generator
     
     def forward(self, src, tgt, src_mask, tgt_mask):
-        return self.decoder(self.encoder(src, src_mask), self.tgt_embed(tgt), src_mask, tgt_mask)
+        return self.decoder(self.encoder(src, src_mask), tgt, src_mask, tgt_mask)
     
     def encoder(self, src, src_mask):
         return self.encoder(self.src_embed(src), src_mask)
     
     def decoder(self, memory, tgt, src_mask, tgt_mask):
-        return self.decoder(memory, tgt, src_mask, tgt_mask)
+        return self.decoder(self.tgt_embed(tgt), memory, src_mask, tgt_mask)
     
 
 class Generator(nn.Module):
