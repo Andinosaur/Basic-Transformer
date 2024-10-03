@@ -80,3 +80,31 @@ class EncoderLayer(nn.Module):
     def forward(self, x, mask):
         x = self.sublayer[0](x, lambda x: self.self_atten(x, x, x, mask))
         return self.sublayer[1](x, self.feed_words)
+    
+
+class Decoder(nn.Module):
+    def __init__(self, layer, N):
+        super(Decoder, self).__init__()
+        self.layer = clone(layer, N)
+        self.norm = LayerNorm(layer.size)
+
+    def forward(self, x, memory, src_mask, tgt_mask):
+        for layer in self.layer:
+            x = layer(x, memory, src_mask, tgt_mask)
+        return self.norm(x)
+    
+
+class DecoderLayer(nn.Module):
+    def __init__(self, size, self_atten, src_atten, feed_words, dropout):
+        super(DecoderLayer, self).__init__()
+        self.size = size
+        self.self_atten = self_atten
+        self.src_atten = src_atten
+        self.feed_words = feed_words
+        self.sublayer = clone(SublayerConnection(size, dropout), 3)
+
+    def forward(self, x, memory, src_mask, tgt_mask):
+        m = memory
+        x = self.sublayer[0](x, lambda x: self.self_atten(x, x, x, tgt_mask))
+        x = self.sublayer[1](x, lambda x: self.src_atten(x, m, m, src_mask))
+        return self.sublayer[2](x, self.feed_words)
