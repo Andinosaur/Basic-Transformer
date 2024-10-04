@@ -1,4 +1,5 @@
 import copy
+import math
 from torch import log_softmax
 import torch
 import torch.nn as nn
@@ -108,3 +109,46 @@ class DecoderLayer(nn.Module):
         x = self.sublayer[0](x, lambda x: self.self_atten(x, x, x, tgt_mask))
         x = self.sublayer[1](x, lambda x: self.src_atten(x, m, m, src_mask))
         return self.sublayer[2](x, self.feed_words)
+    
+
+def subsquent_mask(size):
+    atten_size = (1, size, size)
+    subsquent_mask = torch.triu(torch.ones(atten_size), diagonal=1).type(torch.uint8)
+    return subsquent_mask == 0
+
+
+def attention(query, key, value, mask= None, Dropout= None):
+    d_k = query.size(-1)
+    scores = torch.matmul(query, key.transpose(-2, -1))/math.sqrt(d_k)
+    if mask is not None:
+        scores = scores.masked_fill(mask=0, value=-1e9)
+    p_attn = scores.softmax(dim=-1)
+    if Dropout is not None:
+        p_attn = Dropout(p_attn)
+    return torch.matmul(p_attn, value), p_attn
+
+
+class MultiHeadattention(nn.Module):
+    def __init__(self, h, d_model, dropout = 0.1):
+        super(MultiHeadattention, self).__init__()
+        assert d_model % h == 0
+        self.d_k = d_model // h
+        self.h = h
+        self.linear = clone(nn.Linear(d_model, d_model), 4)
+        self.atten = None
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, query, key, value, mask= None):
+        if mask is not None:
+            mask = mask.unsqueeze(-1)
+        nbatch = query.size(0)
+        query, key, value = [
+            lin(x).view(nbatch, -1, self.h, self.d_k).transpose(1, 2)
+            for lin, x in zip(self.linear, (query, key, value))
+        ]
+        x, self.atten = attention(query, key, value, mask= mask, Dropout=self.dropout)
+        x = (x.transpose(1,2).contiguous().view(nbatch, -1, self.h*self.d_k))
+        del query
+        del key
+        del value
+        return self.linear[-1](x)
