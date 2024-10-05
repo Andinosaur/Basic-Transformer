@@ -191,3 +191,22 @@ class PostionalEncoding(nn.Module):
     def forward(self, x):
         x = x + self.pe[:, : x.size(1)].requires_grad_(False)
         return self.dropout(x)
+
+
+def make_model(src_vocab, tgt_vocab, N=6, d_model=512, d_ff=2048, h=8, dropout=0.1):
+    c = copy.deepcopy
+    atten = MultiHeadattention(h, d_model, dropout)
+    ff = PostionwiseFeedward(d_model, d_ff, dropout)
+    postion = PostionalEncoding(d_model, dropout)
+    model = EncodeDecoder(
+        Encoder(EncoderLayer(d_model, c(atten), c(ff), dropout), N),
+        Decoder(DecoderLayer(d_model, c(atten), c(atten), c(ff), dropout), N),
+        nn.Sequential(Embeddings(d_model, src_vocab), c(postion)),
+        nn.Sequential(Embeddings(d_model, tgt_vocab), c(postion)),
+        Generator(d_model, tgt_vocab),
+    )
+
+    for p in model.parameters():
+        if p.dim()>1:
+            nn.init.xavier_uniform_(p)
+    return model
