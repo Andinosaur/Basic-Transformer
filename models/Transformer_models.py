@@ -149,6 +149,9 @@ class MultiHeadattention(nn.Module):
         ]
         x, p_ttn = attention(query, key, value, mask, self.dropout)
         x = x.transpose(1, 2).contiguous().view(nbatch, -1, self.h * self.d_k)
+        del query
+        del key
+        del value
         return self.linear[-1](x), p_ttn
 
 
